@@ -1,0 +1,14 @@
+.idea/
+/data/
+/output/
+*.tar
+*.tar.gz
+*.zip
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+.vscode/
+.DS_Store
