@@ -22,6 +22,16 @@ def make_ff(d, d_ff):
     """
     return nn.Sequential(nn.Linear(d, d_ff), nn.RELU(), nn.Linear(d_ff, d))
 
+def attend(query, Ks, Vs):
+
+    # compute the dot product of query with all the ks
+    dot_product = Ks @ query
+
+    # apply the softmax()
+    dot_product = F.softmax(dot_product / math.sqrt(d))
+
+    # apply to the key values
+    return Vs @ dot_product
 
 class MultiChannelAttention(nn.Module):
     # we inherit from the nn.Module so that we inherit its attributes required for Pytorch training
@@ -53,10 +63,17 @@ class MultiChannelAttention(nn.Module):
     def forward(self, input, pad_masks):
         """
         This actually computes the result for each channel in one input
-        input = [hand, mouth, pose]
+        input = [hand_embeddings_across_frames, mouth_embeddings_across_frames, pose_embeddings_across_frames]
         input has passed through the channel specific section
+        The pad masks, these are computed somewhere else, and they essentially go through all the videos and checks the maximum length, then loops
+        through all the vidoes and checks if it < max len. Anything that is < will be padded i.e the padmasks is set to true for the frames that are padded
+        In the same way as input it is input_masks = [hand_mask, mouth_mask, pose_mask]
+
+        Why is this important: because padded "embeddings" should not contribute to the attention block
         """
         l = []
+        # We do the normalization first because in Fig 2 they apply layer norm before doing the QKV calculation
+        # We have seperate for l ("Q"), K and V
         for i in range(self.num_channels):
             # per channel we will do the normalization and note down the results
             norm_func = self.norm1[i]
@@ -73,17 +90,27 @@ class MultiChannelAttention(nn.Module):
             V.append(k_res(l[i]))
         # So for each channel we have established the keys and values for each channel
         # These will be continually referenced during the attention blocks
-
+        
         for i in range(self.num_channels):
-            # set the query which is the current channel
-            q_res = self.q[i](input[i])
+            # set the query which is the current channel -> make sure you use the normalized version 
+            q_res = self.q[i](l[i])
 
-            # set the keys and values we will attend to 
+            # collect the keys and values we will attend to 
             possible_K = []
             possible_V = []
+            mask = []
             for j in range(self.num_channels):
                 if i != j:
                     possible_K.append(K[j])
                     possible_V.append(V[j])
+                    mask.append(pad_masks[j])
+            # stack vertically, i.e along the time axis
+            possible_K = torch.cat(possible_K, dim=1)
+            possible_V = torch.cat(possible_V, dim=1)
+            mask = torch.cat(mask, dim=1)
             # TODO: define this function
-            attend(q_res, possible_K, possible_V)
+            weighted_vector, weights = attend(q_res, possible_K, possible_V)
+            # the weighted vector for this channel is added to the norm value, because of residual connections
+            # we dont replace the vector but add to it so that its not learning a new vector all over again
+
+            weighted_vector + l[]
