@@ -108,9 +108,18 @@ class MultiChannelAttention(nn.Module):
             possible_K = torch.cat(possible_K, dim=1)
             possible_V = torch.cat(possible_V, dim=1)
             mask = torch.cat(mask, dim=1)
-            # TODO: define this function
-            weighted_vector, weights = attend(q_res, possible_K, possible_V)
+            # TODO: fix this function
+            weighted_vector = attend(q_res, possible_K, possible_V)
             # the weighted vector for this channel is added to the norm value, because of residual connections
             # we dont replace the vector but add to it so that its not learning a new vector all over again
+            x = input[i] 
+            x += weighted_vector
+            # now we normalize 
+            norm2_func = self.norm2[i]
+            x = norm2_func(x)
+            # perform ffn 
 
-            weighted_vector + l[]
+            ffn_func = self.ffn[i]
+            ffn_x = ffn_func(x)
+            x += ffn_x
+            
