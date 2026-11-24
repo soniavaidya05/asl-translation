@@ -1,0 +1,13 @@
+paths:
+  keypoints_dir: data/raw/keypoints/openpose_output/json
+  translations_csv: data/raw/translations/how2sign_realigned_val.csv
+
+split: val
+sample_clip: "-d5dN54tH2E_0-1-rgb_front"
+
+cleaning:
+  conf_threshold: 0.1
+  min_clip_seconds: 0.5
+
+embedding:
+  embed_dim: 128
